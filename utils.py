@@ -227,4 +227,33 @@ def get_test_dataloader(mean, std, batch_size=16, num_workers=2, shuffle=True):
 
     return cifar10_test_loader
 
+def get_validation_dataloader(mean, std, batch_size=16, num_workers=2, shuffle=True):
+    """ return validation dataloader
+    Args:
+        mean: mean of cifar10 validation dataset
+        std: std of cifar10 validation dataset
+        batch_size: dataloader batchsize
+        num_workers: dataloader num_works
+        shuffle: whether to shuffle
+    Returns: cifar10_validation_loader: torch dataloader object
+    """
+
+    transform_val = transforms.Compose([
+        transforms.Resize(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+
+    cifar10_validation = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_val)
+    
+    # Assuming you have a separate validation set. If not, this can be a subset of the test set or the training set.
+    # Here, I'm using a subset of the test set for validation for illustration purposes.
+    validation_size = int(0.2 * len(cifar10_validation))  # 20% of the test set
+    test_size = len(cifar10_validation) - validation_size
+    cifar10_validation, _ = torch.utils.data.random_split(cifar10_validation, [validation_size, test_size])
+    
+    cifar10_validation_loader = DataLoader(
+        cifar10_validation, shuffle=shuffle, num_workers=num_workers, batch_size=batch_size)
+
+    return cifar10_validation_loader
 

@@ -24,9 +24,12 @@ def train_one_epoch(model, criterion,
         samples = samples.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
 
+        
+
                     
         with torch.cuda.amp.autocast():
             outputs = model(samples)
+
             loss = criterion(outputs, targets)
 
         loss_value = loss.item()
@@ -41,6 +44,11 @@ def train_one_epoch(model, criterion,
 
         torch.cuda.synchronize()
         metric_logger.update(loss=loss_value)
+
+        # Calculate top-1 accuracy
+        acc1, _ = accuracy(outputs, targets, topk=(1, 5))
+        batch_size = samples.shape[0]
+        metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
 
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
