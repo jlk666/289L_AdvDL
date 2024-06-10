@@ -53,9 +53,7 @@ def train_one_epoch(model, criterion,
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-def train_one_epoch_distillation(teacher, student, criterion,
-                    data_loader, optimizer,
-                    device: torch.device, epoch, alpha=1.0, temp=1.0):
+def train_one_epoch_distillation(teacher, student, criterion, data_loader, optimizer, device: torch.device, epoch, alpha=1.0, temp=1.0):
     teacher.eval()
     student.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -67,31 +65,29 @@ def train_one_epoch_distillation(teacher, student, criterion,
         samples = samples.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
 
-           
         with torch.cuda.amp.autocast():
             outputs = student(samples)
-            outputs_teacher = teacher(samples)
+            with torch.no_grad():
+                outputs_teacher = teacher(samples)
             
-            # Imeplemet knowledge distillation loss here
-            
-            
-            # *****************************************
-        loss_value = kl_loss.item()
+            # Implement knowledge distillation loss here
+            loss_kl = kl_loss(F.log_softmax(outputs / temp, dim=1), F.softmax(outputs_teacher / temp, dim=1)) * (alpha * temp * temp)
+            loss_ce = criterion(outputs, targets)
+            loss_value = loss_kl + loss_ce
 
-        if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+        if not math.isfinite(loss_value.item()):
+            print("Loss is {}, stopping training".format(loss_value.item()))
             sys.exit(1)
 
         optimizer.zero_grad()
-        kl_loss.backward()
+        loss_value.backward()
         optimizer.step()
 
         torch.cuda.synchronize()
-        metric_logger.update(loss=loss_value)
+        metric_logger.update(loss=loss_value.item())
 
     print("Averaged stats:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-
 
 @torch.no_grad()
 def evaluate(data_loader, model, criterion, device):
