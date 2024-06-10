@@ -76,14 +76,14 @@ def train_one_epoch_distillation(teacher, student, criterion,
             
             
             # *****************************************
-        loss_value = loss.item()
+        loss_value = kl_loss.item()
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
         optimizer.zero_grad()
-        loss.backward()
+        kl_loss.backward()
         optimizer.step()
 
         torch.cuda.synchronize()
